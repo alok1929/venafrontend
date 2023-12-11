@@ -7,13 +7,37 @@ import Modal from 'react-modal';
 import DatePicker from "react-datepicker";
 
 
-const DataGridComponent = ({ detailedData }) => {
-  if (!Array.isArray(detailedData)) {
-    // Handle the case where detailedData is not an array (null, undefined, etc.)
+const DataGridComponent = ({ collectionData }) => {
+  if (!Array.isArray(collectionData)) {
+    // Handle the case where collectionData is not an array (null, undefined, etc.)
     return <p></p>;
   }
-  const hasActiveItem = Array.isArray(detailedData) && detailedData.some(item => item.isActive === "true");//active button
-  const ContractName = Array.isArray(detailedData) && detailedData.find((item) => item.contractName);//contract name
+
+  const hasActiveItem =
+    Array.isArray(collectionData) &&
+    collectionData.some(
+      (item) =>
+        Array.isArray(item._fieldProto) &&
+        item._fieldProto.some(
+          (field) =>
+            Array.isArray(field.field) &&
+            field.field.some((subField) => subField.booleanValue === 'true') &&
+            field.isActive === 'true'
+        )
+    );
+
+  console.log(hasActiveItem);
+
+
+
+
+  const ContractName = Array.isArray(collectionData) &&
+    collectionData.some(
+      (item) =>
+        Array.isArray(item._fieldProto) &&
+        item._fieldProto.some((field) => field.isActive === 'true')
+    );//contract name
+
   const [showTimeline, setshowTimeline] = useState(false);//timeline div
   const [udetailedData, setuDetailedData] = useState(null);//update modal data recieved
   const [edetailedData, seteDetailedData] = useState(null);//update modal data recieved
@@ -32,7 +56,7 @@ const DataGridComponent = ({ detailedData }) => {
 
 
   const [updateModalStates, setUpdateModalStates] = useState(
-    detailedData.map(() => false)
+    collectionData.map(() => false)
   );
   //Initially, updateModalStates is an array of false values, so no content for any grid is rendered.
 
@@ -44,7 +68,14 @@ const DataGridComponent = ({ detailedData }) => {
     });
   };//  when an update button is clicked, it triggers the openupdatemodal and it 
 
+  function formatTimestamp(timestampObject) {
+    const milliseconds = Number(timestampObject.seconds) * 1000 + Number(timestampObject.nanos) / 1e6;
+    const dateObject = new Date(milliseconds);
 
+    // Format the date as MM/DD/YYYY
+    const formattedDate = `${dateObject.getMonth() + 1}/${dateObject.getDate()}/${dateObject.getFullYear()}`;
+    return formattedDate;
+  }
 
   const closeUpdateModal = (index) => {
     setUpdateModalStates((prevStates) => {
@@ -81,20 +112,20 @@ const DataGridComponent = ({ detailedData }) => {
 
   const handleSaveClick = () => {
     const comment = document.getElementById('textareaUser').value;
-  
+
     try {
       const updatedHistory = [];
-  
+
       Object.keys(ueditedValues).forEach((key) => {
-        const prevValueObject = detailedData.find((item) => item[key] !== undefined);
+        const prevValueObject = collectionData.find((item) => item[key] !== undefined);
         const prevValue = prevValueObject ? prevValueObject[key] : undefined;
         const currentValue = ueditedValues[key];
-  
-        // Update the detailedData with the new value
-        const updatedDetailedData = detailedData.map((item) =>
+
+        // Update the collectionData with the new value
+        const updatedDetailedData = collectionData.map((item) =>
           item[key] !== undefined ? { ...item, [key]: currentValue } : item
         );
-  
+
         // Update the updateHistory for each key
         const description = `${key} corrected from ${prevValue === undefined ? 'undefined' : prevValue} to ${currentValue === undefined ? 'undefined' : currentValue}`;
         updatedHistory.push({
@@ -104,38 +135,38 @@ const DataGridComponent = ({ detailedData }) => {
           comment: comment || 'Correcting as per contract',
         });
       });
-  
+
       // Include contractStartDate and contractEndDate in the updatedHistory if they are defined
       if (contractStartDate !== null) {
         updatedHistory.push({
           user: 'Ravi NM',
           timestamp: new Date().toISOString(),
-          description: `Contract Start Date corrected from ${contractStartDate.toLocaleDateString()} to ${parseDate(detailedData[0].contractStartDate).toLocaleDateString()}`,
+          description: `Contract Start Date corrected from ${contractStartDate.toLocaleDateString()} to ${parseDate(collectionData[0].contractStartDate).toLocaleDateString()}`,
           comment: comment || 'Correcting as per contract',
         });
       }
-  
+
       if (contractEndDate !== null) {
         updatedHistory.push({
           user: 'Ravi NM',
           timestamp: new Date().toISOString(),
-          description: `Contract End Date corrected from ${contractEndDate.toLocaleDateString()} to ${parseDate(detailedData[0].contractEndDate).toLocaleDateString()}`,
+          description: `Contract End Date corrected from ${contractEndDate.toLocaleDateString()} to ${parseDate(collectionData[0].contractEndDate).toLocaleDateString()}`,
           comment: comment || 'Correcting as per contract',
         });
       }
-  
+
       // Update the overall updateHistory state
       setUpdateHistory((prevHistory) => [...prevHistory, ...updatedHistory]);
       console.log('Update History:', updatedHistory);
     } catch (error) {
       console.error('Error updating history:', error);
     }
-  
+
     // Handle saving the edited values
     console.log('Saving edited values:', ueditedValues);
     setUEditingKey(null);
   };
-  
+
 
   //UPDATE ----
 
@@ -154,7 +185,7 @@ const DataGridComponent = ({ detailedData }) => {
       [key]: value,
     }));
   };
-  
+
   const ehandleEditClick = (key, value) => {
     setEditingKey(key);
     setEditedValues((prevValues) => ({
@@ -162,7 +193,7 @@ const DataGridComponent = ({ detailedData }) => {
       [key]: value,
     }));
   };
-  
+
 
   const eparseDate = (dateString) => {
     const [day, month, year] = dateString.split('-').map(Number);
@@ -173,20 +204,20 @@ const DataGridComponent = ({ detailedData }) => {
 
   const handleSaveEClick = () => {
     const comment = document.getElementById('textareaUser').value;
-  
+
     try {
       const updatedHistory = [];
-  
+
       Object.keys(editedValues).forEach((key) => {
-        const prevValueObject = detailedData.find((item) => item[key] !== undefined);
+        const prevValueObject = collectionData.find((item) => item[key] !== undefined);
         const prevValue = prevValueObject ? prevValueObject[key] : undefined;
         const currentValue = editedValues[key];
-  
-        // Update the detailedData with the new value
-        const updatedDetailedData = detailedData.map((item) =>
+
+        // Update the collectionData with the new value
+        const updatedDetailedData = collectionData.map((item) =>
           item[key] !== undefined ? { ...item, [key]: currentValue } : item
         );
-  
+
         // Update the updateHistory for each key
         const description = `${key} corrected from ${currentValue === undefined ? 'undefined' : currentValue} to ${prevValue === undefined ? 'undefined' : prevValue}`;
         updatedHistory.push({
@@ -196,43 +227,43 @@ const DataGridComponent = ({ detailedData }) => {
           comment: comment || 'Correcting as per contract',
         });
       });
-  
+
       // Include contractStartDate and contractEndDate in the updatedHistory if they are defined
       if (econtractStartDate !== null) {
         updatedHistory.push({
           user: 'Ravi NM',
           timestamp: new Date().toISOString(),
-          description: `Contract Start Date corrected from ${econtractStartDate.toLocaleDateString()} to ${parseDate(detailedData[0].contractStartDate).toLocaleDateString()}`,
+          description: `Contract Start Date corrected from ${econtractStartDate.toLocaleDateString()} to ${parseDate(collectionData[0].contractStartDate).toLocaleDateString()}`,
           comment: comment || 'Correcting as per contract',
         });
       }
-  
+
       if (econtractEndDate !== null) {
         updatedHistory.push({
           user: 'Ravi NM',
           timestamp: new Date().toISOString(),
-          description: `Contract End Date corrected from ${econtractEndDate.toLocaleDateString()} to ${parseDate(detailedData[0].contractEndDate).toLocaleDateString()}`,
+          description: `Contract End Date corrected from ${econtractEndDate.toLocaleDateString()} to ${parseDate(collectionData[0].contractEndDate).toLocaleDateString()}`,
           comment: comment || 'Correcting as per contract',
         });
       }
-  
+
       // Update the overall updateHistory state
       esetUpdateHistory((prevHistory) => [...prevHistory, ...updatedHistory]);
       console.log('Update History:', updatedHistory);
-  
+
       seteDetailedData(updatedDetailedData);
     } catch (error) {
       console.error('Error updating history:', error);
     }
-  
+
     // Handle saving the edited values
     console.log('Saving edited values:', editedValues);
     setEditingKey(null);
   };
-  
+
 
   const [editModalStates, seteditModalStates] = useState(
-    detailedData.map(() => false)
+    collectionData.map(() => false)
   );
   //Initially, updateModalStates is an array of false values, so no content for any grid is rendered.
 
@@ -263,10 +294,10 @@ const DataGridComponent = ({ detailedData }) => {
 
   return (
     <div>
-      {Array.isArray(detailedData) ? (
-        detailedData.length > 0 ? (
+      {Array.isArray(collectionData) ? (
+        collectionData.length > 0 ? (
           <div className="">
-            {detailedData.map((item, index) => (
+            {collectionData.map((item, index) => (
               <div key={index} className='px-7 m-7 py-3 bg-slate-300 rounded-2xl mt-6 '>
                 <div className='flex mr-2 justify-between'>
                   <div className='p-4 py-5 px-4'>
@@ -387,20 +418,21 @@ const DataGridComponent = ({ detailedData }) => {
                                         </div>
                                       </div>
                                     ))}
-                                  <div className='px-5 flex'>
-                                    <div className='w-3/4'>
-                                      <textarea className='w-5/6 h-28 rounded-lg px-2 py-2 bg-slate-200' defaultValue="Enter user comment" id="textareaUser"></textarea>
-                                    </div>
-                                    <div className='px-4 py-6'>
-                                      <button
-                                        className='bg-yellow-600 text-white px-10 py-2 rounded-xl'
-                                        onClick={() => {
-                                          handleSaveClick();
-                                        }}
-                                      > Update</button>
-                                    </div>
-                                  </div>
+
                                 </div>
+                              </div>
+                            </div>
+                            <div className='px-5 flex'>
+                              <div className='w-3/4'>
+                                <textarea className='w-5/6 h-28 rounded-lg px-2 py-2 bg-slate-200' defaultValue="Enter user comment" id="textareaUser"></textarea>
+                              </div>
+                              <div className='px-4 py-6'>
+                                <button
+                                  className='bg-green-800 text-white px-10 py-2 rounded-xl'
+                                  onClick={() => {
+                                    handleSaveClick();
+                                  }}
+                                > Update</button>
                               </div>
                             </div>
                           </div>
@@ -511,20 +543,22 @@ const DataGridComponent = ({ detailedData }) => {
                                         </div>
                                       </div>
                                     ))}
-                                  <div className='px-5 flex'>
-                                    <div className='w-3/4'>
-                                      <textarea className='w-5/6 h-28 rounded-lg px-2 py-2 bg-slate-200' defaultValue="Enter user comment" id="textareaUser"></textarea>
-                                    </div>
-                                    <div className='px-4 py-6'>
-                                      <button
-                                        className='bg-yellow-600 text-white px-10 py-2 rounded-xl'
-                                        onClick={() => {
-                                          handleSaveEClick();
-                                        }}
-                                      > Edit</button>
-                                    </div>
-                                  </div>
+
                                 </div>
+                              </div>
+
+                            </div>
+                            <div className='px-5 flex'>
+                              <div className='w-3/4'>
+                                <textarea className='w-5/6 h-28 rounded-lg px-2 py-2 bg-slate-200' defaultValue="Enter user comment" id="textareaUser"></textarea>
+                              </div>
+                              <div className='px-4 py-6'>
+                                <button
+                                  className='bg-yellow-600 text-white px-10 py-2 rounded-xl'
+                                  onClick={() => {
+                                    handleSaveEClick();
+                                  }}
+                                > Edit</button>
                               </div>
                             </div>
                           </div>
@@ -538,52 +572,97 @@ const DataGridComponent = ({ detailedData }) => {
 
                 </div>
                 {/* datagrid for main page starts here */}
-                <div className="grid grid-cols-4 grid-rows-4">
+                <div>
+                  {/*everything other than _fieldproto needs to be filtered out and is being mapped below */}
                   {Object.entries(item)
                     .filter(
                       ([key, value]) =>
-                        value !== 'false' &&
-                        key !== 'technology' &&
-                        key !== 'region' &&
-                        key !== 'plant' &&
-                        key !== 'contractName' &&
-                        key !== 'isActive' &&
-                        key !== 'updateHistory'
+                        key !== '_ref' &&
+                        key !== '_serializer' &&
+                        key !== '_readTime' &&
+                        key !== '_updateTime' &&
+                        key !== '_createTime'
                     )
-                    .map(([key, value], innerIndex) => (
-                      <div>
+                    .map(([key, value], outerIndex) => (
+                      <div key={outerIndex}>
+                        {key === '_fieldsProto' && value && (//checks if key===_fieldsproto and only then it maps it//
+                          <div className="grid grid-cols-4 grid-rows-4">
+                            {Object.entries(value)
+                              .filter(
+                                ([key, value]) =>
+                                  value !== 'false' &&
+                                  key !== 'technology' &&
+                                  key !== 'region' &&
+                                  key !== 'plant' &&
+                                  key !== 'contractName' &&
+                                  key !== 'updateHistory'
+                              )
+                              .map(([fieldKey, fieldValue], innerIndex) => (
 
-                        <div className="" key={innerIndex}>
 
-                          <div className="bg-gray-200 w-11/12 h-24  inline-block m-4 py-2 rounded-lg">
-                            <div className="flex-col px-2">
-                              <div className="">
-                                <div className="flex flex-col w-4/5">
-                                  <div className="text-sm  font-bold px-2">
-                                    {aliasNames[key] || key}:
+                                <div key={innerIndex} className="inline-block m-4">
+
+                                  {fieldKey === 'isActive' &&
+                                    Array.isArray(fieldValue) &&
+                                    fieldValue.some((item) => item.booleanValue === true) && (
+                                      <div>active</div>
+                                    )}
+
+
+                                  <div className="bg-gray-200 w-11/12 h-24 py-2 rounded-lg">
+
+                                    <div className="flex-col px-2">
+
+
+                                      <div className="text-sm font-bold">{fieldKey}:</div>
+                                      {/*the key names inside fieldproto is being displayed */}
+                                      <div>
+                                        <span
+                                          className="p-2 text-md"
+                                          style={{
+                                            wordBreak: 'break-all',
+                                            overflowWrap: 'break-word',
+                                            overflow: 'scroll',
+                                          }}
+                                        >
+                                          {/*"CapacityinMW": {
+                                          "integerValue": "13",
+                                          "valueType": "integerValue" --> this is subKey, subValue
+                                        },
+                                        
+                                        fieldvalue looks like this, we need everything other than valuetype to be displayed, so we map it again
+                                        
+                                        */}
+                                          {Object.entries(fieldValue)
+                                            .filter(([subKey]) => subKey !== 'valueType')
+                                            .map(([subKey, subValue], valueIndex) => (
+                                              // so it would be (([integerValue, 13]),0), only this is checked because valueType is filtered out//
+                                              <div key={valueIndex}>
+
+                                                {fieldValue.valueType === 'timestampValue'
+                                                  ? formatTimestamp(subValue) :
+                                                  fieldValue.valueType === 'booleanValue'
+                                                    ? fieldValue.booleanValue.toString() :
+                                                    typeof subValue === 'object'
+                                                      ? JSON.stringify(subValue, null, 2)
+                                                      : subValue}
+                                              </div>
+                                            ))}
+                                        </span>
+                                      </div>
+                                    </div>
                                   </div>
-                                  <div>
-                                    <span
-                                      className="p-2 text-md"
-                                      style={{
-                                        wordBreak: 'break-all',
-                                        overflowWrap: 'break-word',
-                                        overflow: 'scroll',
-                                      }}
-                                    >
-                                      {typeof value === 'object'
-                                        ? JSON.stringify(value, null, 2)
-                                        : value}
-                                    </span>
-                                  </div>
+
                                 </div>
-                              </div>
-                            </div>
+
+                              ))}
                           </div>
-                        </div>
+                        )}
                       </div>
                     ))}
                 </div>
+
+
                 {/*timeline starting */}
                 <div className='text-sm px-4 py-5'>
                   <button
@@ -604,7 +683,7 @@ const DataGridComponent = ({ detailedData }) => {
                               <div key={historyIndex} className='py-4 '>
                                 <div className='py-4 px-2'>
                                   <span className="absolute flex items-center justify-center w-6 h-6 
-                       bg-blue-100 rounded-xl -start-4   ring-blue  dark:bg-gray-400">
+                                    bg-blue-100 rounded-xl -start-4   ring-blue  dark:bg-gray-400">
 
                                     {historyItem.description.toLowerCase().includes('corrected') && (
                                       <EditedSvg />
@@ -691,17 +770,18 @@ const DataGridComponent = ({ detailedData }) => {
                 </div>
 
               </div>
-            ))}
-          </div>
+            ))
+            }
+          </div >
         ) : (
-          <p>No data available for the selected filters</p>
+          <p></p>
         )
       ) : (
         <div>
 
         </div>
       )}
-    </div>
+    </div >
   );
 };
 

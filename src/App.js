@@ -32,6 +32,13 @@ const RegionDropdownComponent = () => {
   const [showGrid, setShowGrid] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
+  const [documents, setDocuments] = useState([]);
+  const [selectedDocument, setSelectedDocument] = useState('');
+  const [collections, setCollections] = useState([]);
+  const [selectedCollection, setSelectedCollection] = useState('');
+  const [collectionData, setCollectionData] = useState([]);
+
+
   const openModal = () => {
     setModalOpen(true);
   };
@@ -57,21 +64,49 @@ const RegionDropdownComponent = () => {
   };
 
   useEffect(() => {
-    const fetchRegions = async () => {
-      try {
-        const response = await axios.get('/demo.json');
-        setRegionsData(response.data);
-        const regionNames = Object.keys(response.data);
-        setRegions(regionNames);
-      } catch (error) {
-        console.error('Error fetching region data:', error);
-      }
-    };
-
-    fetchRegions();
+    // Fetch regions on component mount
+    axios.get('http://localhost:3000/getRegions')
+      .then(response => setRegions(response.data.regions))
+      .catch(error => console.error('Error fetching regions:', error));
   }, []);
 
-  const handleSearch = async () => {
+  useEffect(() => {
+    // Fetch documents when the selected region changes
+    if (selectedRegion) {
+      axios.get(`http://localhost:3000/getDocuments/${selectedRegion}`)
+        .then(response => setDocuments(response.data.documents))
+        .catch(error => console.error('Error fetching documents:', error));
+    }
+  }, [selectedRegion]);
+
+  useEffect(() => {
+    // Fetch collections when the selected document changes
+    if (selectedRegion && selectedDocument) {
+      axios.get(`http://localhost:3000/getCollections/${selectedRegion}/${selectedDocument}`)
+        .then(response => setCollections(response.data.collections))
+        .catch(error => console.error('Error fetching collections:', error));
+    }
+  }, [selectedRegion, selectedDocument]);
+
+  const fetchData = async () => {
+    try {
+      const response = await axios.get(`http://localhost:3000/getCollections/${selectedRegion}/${selectedDocument}/${selectedCollection}`);
+      setCollectionData(response.data.collections);
+
+
+      setShowGrid(true);
+      setSearchPerformed(true);
+      setIsLoading(false);
+    } catch (error) {
+      console.error('Error fetching data:', error);
+      setIsLoading(false);
+
+    }
+
+  };
+
+
+  async function handleSearch() {
     try {
       setIsLoading(true);
       await new Promise(resolve => setTimeout(resolve, 2000));
@@ -79,8 +114,8 @@ const RegionDropdownComponent = () => {
       console.log("got search.json");
       let dataForSelectedRegion = response.data.data;
 
-      console.log("this is the total entire data")
-      console.log(dataForSelectedRegion)
+      console.log("this is the total entire data");
+      console.log(dataForSelectedRegion);
 
       if (selectedRegion) {
         dataForSelectedRegion = dataForSelectedRegion.filter(
@@ -104,8 +139,6 @@ const RegionDropdownComponent = () => {
         //item.plant name is the plant name in the json data,
         //selectedPlant is the plantname in the dropdown, 
         //and the same for technology and region//
-
-
         const activestatus = dataForSelectedRegion.find((item) => item.isActive);
         setActive(activestatus ? activestatus.isActive : '');
 
@@ -140,7 +173,7 @@ const RegionDropdownComponent = () => {
       console.error('Error fetching detailed data:', error);
       setIsLoading(false);
     }
-  };
+  }
 
   return (
     <div>
@@ -151,10 +184,10 @@ const RegionDropdownComponent = () => {
         <label htmlFor='regions' className=''></label>
         <select
           id='regions'
+          value={selectedRegion}
           className='rounded-lg p-3'
-          onChange={(e) => {
-            setSelectedRegion(e.target.value);
-          }}
+          onChange={(e) => setSelectedRegion(e.target.value)}
+
         >
           <option value='' className=''>
             Region
@@ -170,44 +203,37 @@ const RegionDropdownComponent = () => {
         <select
           id='technologies'
           className='rounded-lg p-3'
-          onChange={(e) => {
-            setSelectedTechnology(e.target.value);
-          }}
+          value={selectedDocument}
+          onChange={(e) => setSelectedDocument(e.target.value)}
         >
           <option value=''>Technology</option>
-          {selectedRegion &&
-            regionsData[selectedRegion] &&
-            Object.keys(regionsData[selectedRegion]).map((technology) => (
-              <option key={technology} value={technology}>
-                {technology}
-              </option>
-            ))}
+          {documents.map((document) => (
+            <option key={document} value={document}>
+              {document}
+            </option>
+          ))}
         </select>
 
         <label htmlFor='plants'></label>
         <select
           id='plants'
           className='rounded-lg p-3'
-          onChange={(e) => {
-            setSelectedPlant(e.target.value);
-          }}
+          value={selectedCollection}
+          onChange={(e) => setSelectedCollection(e.target.value)}
         >
           <option value=''>Plants</option>
-          {selectedRegion &&
-            selectedTechnology &&
-            regionsData[selectedRegion][selectedTechnology] &&
-            regionsData[selectedRegion][selectedTechnology].map((plant) => (
-              <option key={plant} value={plant}>
-                {plant}
-              </option>
-            ))}
+          {collections.map((collection) => (
+            <option key={collection} value={collection}>
+              {collection}
+            </option>
+          ))}
         </select>
 
         <div className='px-5'>
           <button
             className='text-white
            bg-blue-700 hover:bg-blue-800 focus:outline-none focus:ring-4 focus:ring-blue-300 font-medium rounded-full text-sm px-6 py-2.5 text-center mr-2 mb-2 dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800'
-            onClick={handleSearch}
+            onClick={fetchData}
           >
             Search
           </button>
@@ -276,7 +302,7 @@ const RegionDropdownComponent = () => {
       )}
 
 
-      <DataGridComponent detailedData={detailedData} />
+      <DataGridComponent collectionData={collectionData} />
 
     </div>
 
